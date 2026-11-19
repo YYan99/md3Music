@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:material_ui/material_ui.dart';
+
+final appMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
 /// 全局 Toast 提示工具（统一替代原 SnackBar 通知）。
 ///
@@ -14,6 +17,17 @@ import 'package:fluttertoast/fluttertoast.dart';
 /// 完全无从判断是权限、路径还是别的什么错了。Windows 端改用原生短暂提示，
 /// 保证反馈始终可见。
 void showToast(String msg, {bool long = false}) {
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.macOS) {
+    appMessengerKey.currentState
+      ?..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          duration: Duration(milliseconds: long ? 3500 : 2000),
+        ),
+      );
+    return;
+  }
   if (_useNativeToast) {
     // 不 await：保持 showToast 的 void 签名与既有调用点一致。
     unawaited(_showNativeToast(msg, long: long));
@@ -41,10 +55,7 @@ bool get _useNativeToast {
 Future<void> _showNativeToast(String msg, {required bool long}) async {
   const channel = MethodChannel('md3music/desktop_message');
   try {
-    await channel.invokeMethod<void>('show', {
-      'message': msg,
-      'long': long,
-    });
+    await channel.invokeMethod<void>('show', {'message': msg, 'long': long});
   } catch (e) {
     // 原生侧也不可用时，至少不要把异常抛给调用点（showToast 是 void 工具）。
     debugPrint('[showToast] 原生提示失败: $e');

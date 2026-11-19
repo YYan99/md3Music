@@ -215,7 +215,10 @@ class KugouApiServer {
   static String _libraryName() {
     if (Platform.isWindows) return 'kugou_server.dll';
     if (Platform.isLinux) return 'libkugou_server.so';
-    if (Platform.isMacOS) return 'libkugou_server.dylib';
+    if (Platform.isMacOS) {
+      final contents = File(Platform.resolvedExecutable).parent.parent;
+      return '${contents.path}/Frameworks/libkugou_server.dylib';
+    }
     return 'libkugou_server.so'; // Android
   }
 

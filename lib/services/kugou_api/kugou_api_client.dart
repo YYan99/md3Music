@@ -57,6 +57,10 @@ class _LyricFailureTracker {
 }
 
 class KugouApiClient {
+  static const _credentialStorage = FlutterSecureStorage(
+    mOptions: MacOsOptions(usesDataProtectionKeychain: false),
+  );
+
   static final KugouApiClient _instance = KugouApiClient._internal();
 
   factory KugouApiClient() => _instance;
@@ -528,7 +532,7 @@ class KugouApiClient {
     try {
       final prefs = await SharedPreferences.getInstance();
       // 敏感凭证（token/vip_token）从加密存储（Android Keystore）读取
-      const secure = FlutterSecureStorage();
+      const secure = _credentialStorage;
 
       // 读取已保存的账号列表（多账号）
       _accounts
@@ -638,7 +642,7 @@ class KugouApiClient {
       final prefs = await SharedPreferences.getInstance();
       // 敏感凭证（token/vip_token）写入加密存储（Keystore），
       // userid/账号列表等非机密数据仍用 prefs（用于定位与展示）
-      const secure = FlutterSecureStorage();
+      const secure = _credentialStorage;
 
       // 仅清除旧版本全局键（一次性迁移清理，不碰其他账号的按用户键）
       await prefs.remove('kugou_token');
@@ -695,7 +699,7 @@ class KugouApiClient {
     try {
       final prefs = await SharedPreferences.getInstance();
       // 凭证从加密存储读取
-      const secure = FlutterSecureStorage();
+      const secure = _credentialStorage;
       final userIdKey = 'kugou_userid_$userid';
 
       final token = await secure.read(key: 'kugou_token_$userid');
@@ -762,7 +766,7 @@ class KugouApiClient {
     await _ensureInitialized();
     try {
       final prefs = await SharedPreferences.getInstance();
-      const secure = FlutterSecureStorage();
+      const secure = _credentialStorage;
       // 清除加密存储中的凭证 + prefs 中的 userid 定位键与明文遗留
       await secure.delete(key: 'kugou_token_$userid');
       await secure.delete(key: 'kugou_vip_token_$userid');
@@ -797,7 +801,7 @@ class KugouApiClient {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      const secure = FlutterSecureStorage();
+      const secure = _credentialStorage;
 
       // 清除当前用户的加密凭证 + prefs 定位键（加密存储无旧全局键，无需清除）
       if (oldUserid != null) {

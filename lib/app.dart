@@ -414,9 +414,11 @@ class _AppViewState extends State<_AppView> {
     // 监听其变更并重新注册 Android 长按应用图标 Shortcut items。
     // 冷启动时 provider 可能尚未异步加载完成，先按默认配置应用一次，
     // 加载完成后 notifyListeners 会再次触发重应用。
-    _shortcutConfig = context.read<ShortcutConfigProvider>();
-    _shortcutConfig!.addListener(_applyDesktopShortcuts);
-    _applyDesktopShortcuts();
+    if (Platform.isAndroid || Platform.isIOS) {
+      _shortcutConfig = context.read<ShortcutConfigProvider>();
+      _shortcutConfig!.addListener(_applyDesktopShortcuts);
+      _applyDesktopShortcuts();
+    }
     // 处理冷启动时缓存的 shortcut 类型：
     // QuickActions.initialize 在 runApp 之前注册，但此时 Navigator 尚未就绪，
     // 因此 main.dart 把 shortcut 类型暂存到 pendingShortcutType，
@@ -1040,6 +1042,7 @@ class _AppViewState extends State<_AppView> {
         );
       },
       navigatorKey: appNavigatorKey,
+      scaffoldMessengerKey: appMessengerKey,
       // 优先级：未同意协议 → 协议页；否则未完成新手引导 → 引导页；否则主页
       initialRoute: widget.showUserAgreement
           ? '/user_agreement'

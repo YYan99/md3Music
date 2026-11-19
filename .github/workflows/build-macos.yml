@@ -1,0 +1,63 @@
+name: macOS 测试包
+
+on:
+  push:
+    branches: [codex/macos-port]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: 准备 Rust 构建目标
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.5'
+          channel: stable
+          cache: true
+      - name: 构建发布版
+        run: flutter build macos --release
+      - name: 验证应用签名、架构和包内服务
+        run: |
+          app=build/macos/Build/Products/Release/md3music.app
+          lib="$app/Contents/Frameworks/libkugou_server.dylib"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          for arch in $(lipo -archs "$app/Contents/MacOS/md3music"); do
+            lipo -verify_arch "$arch" "$lib"
+          done
+          python3 - "$lib" <<'PY'
+          import ctypes
+          import sys
+          import tempfile
+          from http.client import HTTPConnection
+
+          service = ctypes.CDLL(sys.argv[1])
+          service.start_server.argtypes = [ctypes.c_int, ctypes.c_char_p]
+          with tempfile.TemporaryDirectory() as data:
+              port = service.start_server(0, data.encode())
+              assert port > 0 and service.is_server_running()
+              try:
+                  client = HTTPConnection("127.0.0.1", port, timeout=10)
+                  client.request("OPTIONS", "/search")
+                  assert client.getresponse().status == 204
+                  client.close()
+              finally:
+                  service.stop_server()
+          PY
+          ditto -c -k --keepParent "$app" md3music-macos.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: md3music-macos
+          path: md3music-macos.zip
+          if-no-files-found: error
+          retention-days: 30
