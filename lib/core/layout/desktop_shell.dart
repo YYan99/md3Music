@@ -437,7 +437,12 @@ class _DesktopSidebar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+            padding: EdgeInsets.fromLTRB(
+              20,
+              20 + (Platform.isMacOS ? MediaQuery.paddingOf(context).top : 0),
+              20,
+              12,
+            ),
             child: Row(
               children: [
                 Icon(Icons.music_note, color: cs.primary),

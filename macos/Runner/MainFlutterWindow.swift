@@ -5,6 +5,30 @@ class MainFlutterWindow: NSWindow {
   private var playbackControls: NowPlayingControls?
   private var titlebarChannel: FlutterMethodChannel?
 
+  // 以窗口左上角为锚点，缩放或重新布局时不会反复叠加偏移量。
+  private func positionWindowButtons() {
+    guard !styleMask.contains(.fullScreen), let view = contentView,
+          let close = standardWindowButton(.closeButton),
+          let group = close.superview, group.window === self else { return }
+    let rect = group.convert(close.frame, to: nil)
+    let topLeft = view.convert(view.bounds, to: nil)
+    let target = group.convert(NSPoint(x: topLeft.minX + 14,
+                                       y: topLeft.maxY - 12 - rect.height), from: nil)
+    let origin = group.convert(NSPoint(x: rect.minX, y: rect.minY), from: nil)
+    let dx = target.x - origin.x
+    let dy = target.y - origin.y
+    guard abs(dx) > 0.1 || abs(dy) > 0.1 else { return }
+    for kind: NSWindow.ButtonType in [.closeButton, .miniaturizeButton, .zoomButton] {
+      guard let button = standardWindowButton(kind), button.superview === group else { continue }
+      button.setFrameOrigin(NSPoint(x: button.frame.minX + dx, y: button.frame.minY + dy))
+    }
+  }
+
+  override func update() {
+    super.update()
+    positionWindowButtons()
+  }
+
   private var titlebarInset: CGFloat {
     guard !styleMask.contains(.fullScreen), let view = contentView else { return 0 }
     let top = view.convert(view.bounds, to: nil).maxY
@@ -17,6 +41,7 @@ class MainFlutterWindow: NSWindow {
   }
 
   @objc private func fullscreenChanged(_ notification: Notification) {
+    positionWindowButtons()
     titlebarChannel?.invokeMethod("insetChanged", arguments: Double(titlebarInset))
   }
 
@@ -29,6 +54,7 @@ class MainFlutterWindow: NSWindow {
     titlebarAppearsTransparent = true
     titlebarSeparatorStyle = .none
     self.setFrame(windowFrame, display: true)
+    positionWindowButtons()
 
     RegisterGeneratedPlugins(registry: flutterViewController)
     let titlebar = FlutterMethodChannel(
