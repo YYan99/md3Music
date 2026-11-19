@@ -73,7 +73,8 @@ final class NowPlayingControls {
     }
     guard artwork == nil else { return }
     let source = track["artUrl"] as? String ?? ""
-    let audioPath = track["fallbackFilePath"] as? String ?? ""
+    let audioPath = (track["fallbackFilePath"] as? String)
+      ?? (source.hasPrefix("local://") ? String(source.dropFirst("local://".count)) : "")
     guard !source.isEmpty || !audioPath.isEmpty else { return }
     if artworkTask != nil {
       // 本地缓存路径到达时优先采用；后续进度更新不能用网络请求挤掉它。
@@ -87,7 +88,11 @@ final class NowPlayingControls {
         if url.isFileURL {
           data = try? Data(contentsOf: url)
         } else if url.scheme == "https" || url.scheme == "http" {
-          if let (bytes, response) = try? await URLSession.shared.data(from: url),
+          var address = URLComponents(url: url, resolvingAgainstBaseURL: false)
+          if address?.scheme == "http", address?.host?.lowercased().hasSuffix(".kugou.com") == true {
+            address?.scheme = "https"
+          }
+          if let (bytes, response) = try? await URLSession.shared.data(from: address?.url ?? url),
              let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) {
             data = bytes
           }

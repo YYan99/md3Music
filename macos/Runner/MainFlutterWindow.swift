@@ -7,7 +7,13 @@ class MainFlutterWindow: NSWindow {
 
   private var titlebarInset: CGFloat {
     guard !styleMask.contains(.fullScreen), let view = contentView else { return 0 }
-    return max(0, view.convert(view.bounds, to: nil).maxY - contentLayoutRect.maxY)
+    let top = view.convert(view.bounds, to: nil).maxY
+    let layoutInset = top - contentLayoutRect.maxY
+    if let button = standardWindowButton(.closeButton), button.window === self {
+      let buttonInset = top - button.convert(button.bounds, to: nil).minY
+      return max(layoutInset, buttonInset)
+    }
+    return max(0, layoutInset)
   }
 
   @objc private func fullscreenChanged(_ notification: Notification) {
