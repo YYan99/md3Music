@@ -33,7 +33,7 @@ jobs:
           lib="$app/Contents/Frameworks/libkugou_server.dylib"
           codesign --verify --deep --strict --verbose=2 "$app"
           for arch in $(lipo -archs "$app/Contents/MacOS/md3music"); do
-            lipo -verify_arch "$arch" "$lib"
+            lipo "$lib" -verify_arch "$arch"
           done
           python3 - "$lib" <<'PY'
           import ctypes
