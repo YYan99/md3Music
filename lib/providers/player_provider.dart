@@ -7327,7 +7327,12 @@ class PlayerProvider extends ChangeNotifier with WidgetsBindingObserver {
   void _updateNotification() {
     if (_isDisposed) return;
     final song = _currentSong;
-    if (song == null) return;
+    if (song == null) {
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.macOS) {
+        unawaited(MediaNotificationService.hideNotification());
+      }
+      return;
+    }
     // 方案B：切歌后预取队列后续歌曲封面，下一首切换时命中缓存秒显
     _prefetchUpcomingCovers();
     // Check favorite status from FavoritesProvider via global context
