@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter/services.dart';
 import 'package:md3music/providers/kugou_provider.dart';
 import 'package:md3music/services/kugou_api/kugou_api_client.dart';
 import 'package:md3music/services/kugou_api/kugou_endpoints.dart';
@@ -10,6 +11,10 @@ import 'package:md3music/services/kugou_api/kugou_endpoints.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
+    final inset = await const MethodChannel(
+      'md3music/macos_titlebar',
+    ).invokeMethod<double>('getInset');
+    if (inset == null || inset <= 0) throw StateError('窗口未给红黄绿按钮预留安全区');
     const user = 'macos-ci-fixture';
     const token = 'fixture-session';
     final api = KugouApiClient();

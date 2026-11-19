@@ -50,6 +50,7 @@ import 'core/widgets/app_background.dart';
 import 'core/widgets/desktop_input_layer.dart';
 import 'core/widgets/desktop_playback_keys.dart';
 import 'core/widgets/safe_insets_guard.dart';
+import 'core/widgets/macos_titlebar_insets.dart';
 import 'core/widgets/windows_window_frame.dart';
 import 'data/models/playlist.dart';
 import 'data/models/song.dart';
@@ -933,7 +934,7 @@ class _AppViewState extends State<_AppView> {
         // 底部弹层 / 菜单）、DLNA 与拖拽覆盖层都在作用域内。
         // MCP 写操作确认弹窗宿主：覆盖在整棵 App 之上（含全部路由与 Overlay），
         // 外部 AI 触发需要二次确认的写工具时在此弹出裁决对话框。
-        return McpConfirmationDialogHost(
+        final layout = McpConfirmationDialogHost(
           child: DisplayScaleScope(
             scale: context.watch<ThemeProvider>().displayScale,
             child: SafeInsetsGuard(
@@ -1040,6 +1041,7 @@ class _AppViewState extends State<_AppView> {
             ),
           ),
         );
+        return Platform.isMacOS ? MacosTitlebarInsets(child: layout) : layout;
       },
       navigatorKey: appNavigatorKey,
       scaffoldMessengerKey: appMessengerKey,
