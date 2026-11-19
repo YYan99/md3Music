@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -54,6 +54,26 @@ jobs:
               finally:
                   service.stop_server()
           PY
+          "$app/Contents/MacOS/md3music" >"$RUNNER_TEMP/md3music.log" 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          for i in {1..60}; do
+            kill -0 "$pid" || { tail -40 "$RUNNER_TEMP/md3music.log"; exit 1; }
+            port=$(lsof -nP -a -p "$pid" -iTCP -sTCP:LISTEN -Fn | sed -n 's/^n127\.0\.0\.1://p' | head -1) || true
+            if [[ -n "$port" ]] && [[ $(curl -s -o /dev/null -w '%{http_code}' -X OPTIONS "http://127.0.0.1:$port/search") == 204 ]]; then
+              break
+            fi
+            port=''
+            sleep 1
+          done
+          test -n "$port" || { tail -40 "$RUNNER_TEMP/md3music.log"; exit 1; }
+          # 在线曲库受运行地区和服务可用性影响，独立记录试搜结果。
+          if curl -fsS --max-time 20 "http://127.0.0.1:$port/search?keywords=Yesterday&pagesize=3" |
+            jq -e '(.data // .) | (.lists // .songs // .info // []) | any(.[]; .FileHash or .hash or .SongName or .songname)' >/dev/null; then
+            echo '打包后的应用在线搜歌成功。' | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo '本地服务已通过验证，在线试搜未取得曲目，需在测试机复核。' | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
           ditto -c -k --keepParent "$app" md3music-macos.zip
       - uses: actions/upload-artifact@v4
         with:
