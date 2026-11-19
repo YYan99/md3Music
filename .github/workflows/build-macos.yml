@@ -18,6 +18,10 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+      - name: 验证系统正在播放信息、暂停和清除
+        run: |
+          swiftc macos/Runner/NowPlayingControls.swift test/macos/now_playing/main.swift -o "$RUNNER_TEMP/test-now-playing"
+          "$RUNNER_TEMP/test-now-playing"
       - name: 准备 Rust 构建目标
         run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
       - uses: subosito/flutter-action@v2
