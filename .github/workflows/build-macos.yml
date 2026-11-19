@@ -25,6 +25,21 @@ jobs:
           flutter-version: '3.47.5'
           channel: stable
           cache: true
+      - name: 使用本机钥匙串验证手机号登录与跨进程恢复
+        run: |
+          flutter build macos --release --target test/macos/login_restart_app.dart
+          python3 - <<'PY'
+          import os
+          import subprocess
+
+          executable = "build/macos/Build/Products/Release/md3music.app/Contents/MacOS/md3music"
+          for phase in ("write", "restore"):
+              run = subprocess.run([executable], env={**os.environ, "MD3_LOGIN_RESTART_PHASE": phase},
+                                   check=True, timeout=90, stdout=subprocess.PIPE, text=True)
+              if f"MD3_LOGIN_TEST_OK={phase}" not in run.stdout.splitlines():
+                  raise RuntimeError(f"测试进程未完成 {phase}")
+              print(f"测试阶段通过：{phase}")
+          PY
       - name: 构建发布版
         run: flutter build macos --release
       - name: 验证应用签名、架构和包内服务

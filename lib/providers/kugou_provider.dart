@@ -120,7 +120,7 @@ class KugouProvider extends ChangeNotifier {
     try {
       await _apiClient.registerDevice();
 
-      if (_apiClient.isLoggedIn) {
+      if (await _apiClient.isLoggedInWhenReady()) {
         _isLoggedIn = true;
         // 已保存凭证的恢复不依赖用户资料接口成功。
         notifyListeners();
@@ -1786,8 +1786,10 @@ class KugouProvider extends ChangeNotifier {
 
       // 单账号：直接登录成功
       if (res?['status'] == 1 && token != null && userid != null) {
-        await _completePhoneLogin(data);
-        return const PhoneLoginResult(PhoneLoginStatus.success);
+        final saved = await _completePhoneLogin(token, userid, data?['vip_token']?.toString());
+        return PhoneLoginResult(
+          saved ? PhoneLoginStatus.success : PhoneLoginStatus.failed,
+        );
       }
 
       // 多账号：data 里带账号列表（info_list / user_list），需用户选择。
@@ -1827,8 +1829,7 @@ class KugouProvider extends ChangeNotifier {
         final token = data?['token']?.toString();
         final uid = data?['userid']?.toString();
         if (token != null && uid != null) {
-          await _completePhoneLogin(data);
-          return true;
+          return await _completePhoneLogin(token, uid, data?['vip_token']?.toString());
         }
       }
       _error = res?['error_msg']?.toString() ?? '登录失败';
@@ -1842,13 +1843,7 @@ class KugouProvider extends ChangeNotifier {
   }
 
   /// 手机验证码登录成功后的公共收尾：清头像缓存 → 保存凭证 → 拉取用户信息。
-  Future<void> _completePhoneLogin(Map? data) async {
-    final token = data?['token']?.toString();
-    final userid = data?['userid']?.toString();
-    final vipToken = data?['vip_token']?.toString();
-    if (token == null || userid == null) return;
-
-    _pendingLoginAccounts = [];
+  Future<bool> _completePhoneLogin(String token, String userid, String? vipToken) async {
     // 凭证落盘、清账号级缓存、拉资料的收尾与第三方扫码登录完全一致，
     // 统一走 completeThirdPartyLogin，避免两条路径慢慢漂移。
     final ok = await completeThirdPartyLogin(
@@ -1857,8 +1852,9 @@ class KugouProvider extends ChangeNotifier {
       vipToken: vipToken,
     );
     if (ok) {
-      debugPrint('✅ [Account] 登录新账号: $userid, userInfo=${_userInfo?.nickname}');
+      _pendingLoginAccounts = [];
     }
+    return ok;
   }
 
   /// 解析多账号响应中的账号列表（兼容 info_list / user_list 等字段名）。

@@ -96,6 +96,8 @@ dependencies:
   pinyin: ^3.3.0
 
 dependency_overrides:
+  # 旧版 Apple 插件在本机钥匙串上查询同步项，会导致临时签名的 Mac 应用报 -34018。
+  flutter_secure_storage_darwin: 0.4.3
   # 钉住 material_ui 1.7.0：1.8.0 新导出 RoundedPolygon/CornerRounding（src/shapes/），
   # 与 m3e_core 1.1.4 自带的同名符号冲突，同时使用会出现
   # "'RoundedPolygon' is imported from both ..." 编译错误。约束 ^1.3.0 本身允许
